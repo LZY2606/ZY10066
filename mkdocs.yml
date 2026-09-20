@@ -1,0 +1,19 @@
+site_name: pddl
+repo_name: 'AI-Planning/pddl'
+repo_url: https://github.com/AI-Planning/pddl
+site_url: https://ai-planning.github.io/pddl
+
+nav:
+    - Home: index.md
+    - Credits: authors.md
+    - How to contribute: contributing.md
+    - References: references.md
+
+theme:
+  name: "material"
+markdown_extensions:
+  - markdown_include.include:
+      base_path: docs
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
