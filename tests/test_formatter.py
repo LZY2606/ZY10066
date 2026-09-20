@@ -85,6 +85,34 @@ def test_typed_constants_formatting_in_domain() -> None:
     )""")
 
 
+def test_domain_implicit_root_type_normalized_on_roundtrip(domain_parser) -> None:
+    """A root type declared without an explicit '- object' parent is normalized by the formatter.
+
+    On the first parse, ``truck car - vehicle`` gives a types dictionary where ``vehicle`` is
+    absent (an implicit root type is not recorded). The formatter prints it as
+    ``vehicle - object``, which the parser maps back to ``vehicle -> None`` (see
+    ``DomainTransformer.types``). Hence parse-format-parse does not preserve the raw types
+    dictionary for implicitly-declared root types, even though both parses succeed.
+    """
+    domain_str = dedent("""\
+    (define (domain logistics)
+        (:requirements :strips :typing)
+        (:types truck car - vehicle)
+        (:predicates (p ?x - vehicle))
+    )""")
+
+    first_domain = domain_parser(domain_str)
+    assert "vehicle" not in first_domain.types
+    assert first_domain.types == {"truck": "vehicle", "car": "vehicle"}
+
+    formatted = domain_to_string(first_domain)
+    assert "vehicle - object" in formatted
+
+    second_domain = domain_parser(formatted)
+    assert second_domain.types == {"vehicle": None, "truck": "vehicle", "car": "vehicle"}
+    assert first_domain.types != second_domain.types
+
+
 def test_typed_objects_formatting_in_problem() -> None:
     """Test that typed objects are formatted correctly."""
     t1, t2, t3 = "type_1", "type_2", "type_3"
