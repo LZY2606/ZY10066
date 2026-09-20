@@ -864,3 +864,43 @@ def test_unary_minus_in_derived_predicate_condition() -> None:
     condition = axiom.condition
     assert isinstance(condition, GreaterEqualThan)
     assert isinstance(condition.operands[1], UnaryMinus)
+
+
+def test_multi_variable_quantifier_round_trip_keeps_variable_set() -> None:
+    """Check that a multi-variable quantifier survives parse-format-parse with all its variables.
+
+    This regression test exercises the internal path where quantifier variables are stored as a
+    set (pddl/logic/base.py:209) and serialized back without sorting
+    (pddl/logic/base.py:233). The declared variables and their type tags must be preserved through
+    the formatter, even though their textual order may differ.
+    """
+    domain_str = dedent("""
+    (define (domain test)
+        (:requirements :typing :universal-preconditions :existential-preconditions)
+        (:types ta tb tc)
+        (:predicates (p ?a - ta ?b - tb ?c - tc))
+        (:action a
+            :parameters (?a - ta ?b - tb ?c - tc)
+            :precondition (and
+                (forall (?a - ta ?b - tb ?c - tc) (p ?a ?b ?c))
+                (exists (?a - ta ?c - tc) (p ?a ?b ?c)))
+            :effect (p ?a)
+        )
+    )
+    """)
+    domain = DomainParser()(domain_str)
+    formatted = str(domain)
+    parsed_again = DomainParser()(formatted)
+
+    assert parsed_again == domain
+
+    action = next(iter(domain.actions))
+    forall_cond, exists_cond = action.precondition.operands
+    assert {v.name for v in forall_cond.variables} == {"a", "b", "c"}
+    assert {next(iter(v.type_tags)) for v in forall_cond.variables} == {"ta", "tb", "tc"}
+    assert {v.name for v in exists_cond.variables} == {"a", "c"}
+
+    action_again = next(iter(parsed_again.actions))
+    forall_again, exists_again = action_again.precondition.operands
+    assert forall_again.variables == forall_cond.variables
+    assert exists_again.variables == exists_cond.variables
